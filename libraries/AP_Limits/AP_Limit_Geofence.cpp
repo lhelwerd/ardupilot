@@ -49,6 +49,12 @@ const AP_Param::GroupInfo AP_Limit_Geofence::var_info[] PROGMEM = {
     // @Range: 0 6
     // @Increment: 1
     AP_GROUPINFO("FNC_TOT", 4,      AP_Limit_Geofence,      _fence_total, 0),
+
+    // @Param: FNC_OUT
+    // @DisplayName: Geofence triggers when outside
+    // @Description: Whether the geofence triggers when the vehicle is outside or inside the geofence. Only supported for complex mode fences.
+    // @Values: 0:Disabled,1:Enabled
+    AP_GROUPINFO("FNC_OUT", 5,      AP_Limit_Geofence,      _outside, 1),
     AP_GROUPEND
 
 
@@ -115,10 +121,19 @@ bool AP_Limit_Geofence::triggered() {
             Vector2l location;
             location.x = _current_loc->lat;
             location.y = _current_loc->lng;
-            // trigger if outside
             if (Polygon_outside(location, &_boundary[1], _fence_total-1)) {
-                // TRIGGER
-                _triggered = true;
+                // trigger if outside
+                if (_outside) {
+                    // TRIGGER
+                    _triggered = true;
+                }
+            }
+            else {
+                // trigger if inside
+                if (!_outside) {
+                    // TRIGGER
+                    _triggered = true;
+                }
             }
         } else {
             // boundary incorrect

@@ -50,6 +50,7 @@ protected:
     // Complex mode, defined fence points
     AP_Int8                 _fence_total;
     AP_Int8                 _num_points;
+    AP_Int8                 _outside;
 
 private:
     static StorageAccess    _storage;
