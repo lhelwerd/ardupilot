@@ -66,13 +66,13 @@ BBONE_GDB     :=  gdb
 BBONE_OBJCOPY :=  objcopy
 
 # toolchains for Raspberry Pi
-RPI_CXX     :=  arm-linux-gnueabihf-g++
-RPI_CC      :=  arm-linux-gnueabihf-gcc
-RPI_AS      :=  arm-linux-gnueabihf-gcc
-RPI_AR      :=  arm-linux-gnueabihf-ar
-RPI_LD      :=  arm-linux-gnueabihf-g++
-RPI_GDB     :=  arm-linux-gnueabihf-gdb
-RPI_OBJCOPY :=  arm-linux-gnueabihf-obj
+RPI_CXX     :=  armv7l-unknown-linux-gnueabihf-g++
+RPI_CC      :=  armv7l-unknown-linux-gnueabihf-gcc
+RPI_AS      :=  armv7l-unknown-linux-gnueabihf-gcc
+RPI_AR      :=  armv7l-unknown-linux-gnueabihf-ar
+RPI_LD      :=  armv7l-unknown-linux-gnueabihf-g++
+RPI_GDB     :=  armv7l-unknown-linux-gnueabihf-gdb
+RPI_OBJCOPY :=  armv7l-unknown-linux-gnueabihf-obj
 
 # toolchains for zynq
 ZYNQ_CXX     :=  arm-xilinx-linux-gnueabi-g++
