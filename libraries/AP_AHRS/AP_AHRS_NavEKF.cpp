@@ -293,21 +293,15 @@ bool AP_AHRS_NavEKF::have_inertial_nav(void) const
 // order. Must only be called if have_inertial_nav() is true
 bool AP_AHRS_NavEKF::get_velocity_NED(Vector3f &vec) const
 {
-    if (using_EKF()) {
-        EKF.getVelNED(vec);
-        return true;
-    }
-    return false;
+    EKF.getVelNED(vec);
+    return true;
 }
 
 // return a relative ground position in meters/second, North/East/Down
 // order. Must only be called if have_inertial_nav() is true
 bool AP_AHRS_NavEKF::get_relative_position_NED(Vector3f &vec) const
 {
-    if (using_EKF()) {
-        return EKF.getPosNED(vec);
-    }
-    return false;
+    return EKF.getPosNED(vec);
 }
 
 bool AP_AHRS_NavEKF::using_EKF(void) const
