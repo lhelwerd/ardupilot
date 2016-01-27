@@ -64,6 +64,7 @@ void Plane::setup_glide_slope(void)
     auto_state.wp_distance = get_distance(current_loc, next_WP_loc);
     auto_state.wp_proportion = location_path_proportion(current_loc, 
                                                         prev_WP_loc, next_WP_loc);
+    SpdHgt_Controller->set_path_proportion(auto_state.wp_proportion);
 
     /*
       work out if we will gradually change altitude, or try to get to
@@ -398,8 +399,8 @@ bool Plane::above_location_current(const Location &loc)
 #endif
 
     float loc_alt_cm = loc.alt;
-    if (!loc.flags.relative_alt) {
-        loc_alt_cm -= home.alt;
+    if (loc.flags.relative_alt) {
+        loc_alt_cm += home.alt;
     }
     return current_loc.alt > loc_alt_cm;
 }
@@ -552,19 +553,34 @@ float Plane::rangefinder_correction(void)
  */
 void Plane::rangefinder_height_update(void)
 {
-    uint16_t distance_cm = rangefinder.distance_cm();
+    float distance = rangefinder.distance_cm()*0.01f;
     float height_estimate = 0;
     if ((rangefinder.status() == RangeFinder::RangeFinder_Good) && home_is_set != HOME_UNSET) {
+        if (!rangefinder_state.have_initial_reading) {
+            rangefinder_state.have_initial_reading = true;
+            rangefinder_state.initial_range = distance;
+        }
         // correct the range for attitude (multiply by DCM.c.z, which
         // is cos(roll)*cos(pitch))
-        height_estimate = distance_cm * 0.01f * ahrs.get_dcm_matrix().c.z;
+        height_estimate = distance * ahrs.get_rotation_body_to_ned().c.z;
 
         // we consider ourselves to be fully in range when we have 10
-        // good samples (0.2s)
+        // good samples (0.2s) that are different by 5% of the maximum
+        // range from the initial range we see. The 5% change is to
+        // catch Lidars that are giving a constant range, either due
+        // to misconfiguration or a faulty sensor
         if (rangefinder_state.in_range_count < 10) {
-            rangefinder_state.in_range_count++;
+            if (fabsf(rangefinder_state.initial_range - distance) > 0.05f * rangefinder.max_distance_cm()*0.01f) {
+                rangefinder_state.in_range_count++;
+            }
         } else {
             rangefinder_state.in_range = true;
+            if (!rangefinder_state.in_use &&
+                flight_stage == AP_SpdHgtControl::FLIGHT_LAND_APPROACH &&
+                g.rangefinder_landing) {
+                rangefinder_state.in_use = true;
+                gcs_send_text_fmt(MAV_SEVERITY_INFO, "Rangefinder engaged at %.2fm", (double)height_estimate);
+            }
         }
     } else {
         rangefinder_state.in_range_count = 0;
@@ -589,8 +605,16 @@ void Plane::rangefinder_height_update(void)
         // the old data is more than 5 seconds old
         if (millis() - rangefinder_state.last_correction_time_ms > 5000) {
             rangefinder_state.correction = correction;
+            rangefinder_state.initial_correction = correction;
         } else {
             rangefinder_state.correction = 0.8f*rangefinder_state.correction + 0.2f*correction;
+            if (fabsf(rangefinder_state.correction - rangefinder_state.initial_correction) > 30) {
+                // the correction has changed by more than 30m, reset use of Lidar. We may have a bad lidar
+                if (rangefinder_state.in_use) {
+                    gcs_send_text_fmt(MAV_SEVERITY_INFO, "Rangefinder disengaged at %.2fm", (double)height_estimate);
+                }
+                memset(&rangefinder_state, 0, sizeof(rangefinder_state));
+            }
         }
         rangefinder_state.last_correction_time_ms = millis();    
     }

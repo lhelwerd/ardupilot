@@ -3,7 +3,7 @@
 #ifndef __AP_HAL_PX4_STORAGE_H__
 #define __AP_HAL_PX4_STORAGE_H__
 
-#include <AP_HAL.h>
+#include <AP_HAL/AP_HAL.h>
 #include "AP_HAL_PX4_Namespace.h"
 #include <systemlib/perf_counter.h>
 
@@ -17,7 +17,7 @@ class PX4::PX4Storage : public AP_HAL::Storage {
 public:
     PX4Storage();
 
-    void init(void* machtnichts) {}
+    void init() {}
     void read_block(void *dst, uint16_t src, size_t n);
     void write_block(uint16_t dst, const void* src, size_t n);
 

@@ -6,8 +6,8 @@
   Andrew Tridgell November 2011
  */
 
-#include <AP_HAL.h>
-#include <AP_Math.h>
+#include <AP_HAL/AP_HAL.h>
+#include <AP_Math/AP_Math.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 
@@ -42,7 +42,7 @@ void SITL_State::_update_flow(void)
     }
 
     // update at the requested rate
-    uint32_t now = hal.scheduler->millis();
+    uint32_t now = AP_HAL::millis();
     if (now - last_flow_ms < 1000*(1.0f/_sitl->flow_rate)) {
         return;
     }

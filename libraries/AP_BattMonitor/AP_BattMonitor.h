@@ -2,9 +2,9 @@
 #ifndef AP_BATTMONITOR_H
 #define AP_BATTMONITOR_H
 
-#include <AP_Common.h>
-#include <AP_Param.h>
-#include <AP_Math.h>
+#include <AP_Common/AP_Common.h>
+#include <AP_Param/AP_Param.h>
+#include <AP_Math/AP_Math.h>
 
 // maximum number of battery monitors
 #define AP_BATT_MONITOR_MAX_INSTANCES       2
@@ -48,6 +48,7 @@ public:
     struct BattMonitor_State {
         uint8_t     instance;           // the instance number of this monitor
         bool        healthy;            // battery monitor is communicating correctly
+        bool        is_powering_off;    // true if the battery is about to power off
         float       voltage;            // voltage in volts
         float       current_amps;       // current in amperes
         float       current_total_mah;  // total current draw since start-up
@@ -69,6 +70,9 @@ public:
     // healthy - returns true if monitor is functioning
     bool healthy(uint8_t instance) const;
     bool healthy() const { return healthy(AP_BATT_PRIMARY_INSTANCE); }
+
+    bool is_powering_off(uint8_t instance) const;
+    bool is_powering_off() const { return is_powering_off(AP_BATT_PRIMARY_INSTANCE); }
 
     /// has_current - returns true if battery monitor instance provides current info
     bool has_current(uint8_t instance) const;

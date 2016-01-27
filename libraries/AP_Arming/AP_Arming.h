@@ -3,10 +3,10 @@
 #ifndef __AP_ARMING_H__
 #define __AP_ARMING_H__ 
 
-#include <AP_AHRS.h>
-#include <AP_HAL.h>
-#include <AP_Param.h>
-#include <GCS_MAVLink.h>
+#include <AP_AHRS/AP_AHRS.h>
+#include <AP_HAL/AP_HAL.h>
+#include <AP_Param/AP_Param.h>
+#include <GCS_MAVLink/GCS_MAVLink.h>
 
 class AP_Arming {
 public:
@@ -23,6 +23,7 @@ public:
         ARMING_CHECK_BATTERY    = 0x0100,
         ARMING_CHECK_AIRSPEED   = 0x0200,
         ARMING_CHECK_LOGGING    = 0x0400,
+        ARMING_CHECK_SWITCH     = 0x0800,
     };
 
     enum ArmingMethod {
@@ -43,11 +44,8 @@ public:
         ARMING_RUDDER_ARMDISARM = 2
     };
 
-    // for the hacky function pointer to gcs_send_text_p
-    FUNCTOR_TYPEDEF(gcs_send_t_p, void, gcs_severity, const prog_char_t *);
-
     AP_Arming(const AP_AHRS &ahrs_ref, const AP_Baro &baro, Compass &compass,
-              const enum HomeState &home_set, gcs_send_t_p);
+              const enum HomeState &home_set);
 
     ArmingRequired arming_required();
     bool arm(uint8_t method);
@@ -61,34 +59,30 @@ public:
       in a vehicle specific subclass
     */
     virtual bool pre_arm_checks(bool report);
-    void set_skip_gyro_cal(bool set) { skip_gyro_cal = set; }
 
     void set_logging_available(bool set) { logging_available = set; }
 
-    //for params
     static const struct AP_Param::GroupInfo        var_info[];
 
 protected:
-    bool                                                armed:1;
-    bool                                                logging_available:1;
-    bool                                                skip_gyro_cal:1;
+    // Parameters
+    AP_Int8                 require;
+    AP_Int8                 rudder_arming_value;
+    AP_Int16                checks_to_perform;      // bitmask for which checks are required
+    AP_Float                accel_error_threshold;
 
-    //Parameters
-    AP_Int8                                           require;
-    AP_Int8                               rudder_arming_value;
-        //bitmask for which checks are required
-    AP_Int16                                checks_to_perform;
+    // references
+    const AP_AHRS           &ahrs;
+    const AP_Baro           &barometer;
+    Compass                 &_compass;
+    const enum HomeState    &home_is_set;
 
-    //how the vehicle was armed
-    uint8_t                                     arming_method;
-
-    const AP_AHRS                                       &ahrs;
-    const AP_Baro                                  &barometer;
-    Compass                                         &_compass;
-    const enum HomeState                         &home_is_set;
-    gcs_send_t_p                              gcs_send_text_P;
-    uint32_t                                  last_accel_pass_ms[INS_MAX_INSTANCES];
-    uint32_t                                  last_gyro_pass_ms[INS_MAX_INSTANCES];
+    // internal members
+    bool                    armed:1;
+    bool                    logging_available:1;
+    uint8_t                 arming_method;          // how the vehicle was armed
+    uint32_t                last_accel_pass_ms[INS_MAX_INSTANCES];
+    uint32_t                last_gyro_pass_ms[INS_MAX_INSTANCES];
 
     void set_enabled_checks(uint16_t);
 
@@ -98,7 +92,7 @@ protected:
 
     bool logging_checks(bool report);
 
-    bool ins_checks(bool report);
+    virtual bool ins_checks(bool report);
 
     bool compass_checks(bool report);
 
@@ -107,6 +101,8 @@ protected:
     bool battery_checks(bool report);
 
     bool hardware_safety_check(bool report);
+
+    bool board_voltage_checks(bool report);
 
     bool manual_transmitter_checks(bool report);
 };

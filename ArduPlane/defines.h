@@ -63,7 +63,10 @@ enum FlightMode {
     RTL           = 11,
     LOITER        = 12,
     GUIDED        = 15,
-    INITIALISING  = 16
+    INITIALISING  = 16,
+    QSTABILIZE    = 17,
+    QHOVER        = 18,
+    QLOITER       = 19
 };
 
 // type of stick mixing enabled
@@ -185,4 +188,9 @@ enum {
     ATT_CONTROL_APMCONTROL = 1
 };
 
+enum {
+    CRASH_DETECT_ACTION_BITMASK_DISABLED = 0,
+    CRASH_DETECT_ACTION_BITMASK_DISARM = (1<<0),
+    // note: next enum will be (1<<1), then (1<<2), then (1<<3)
+};
 #endif // _DEFINES_H

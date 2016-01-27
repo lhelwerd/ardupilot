@@ -22,8 +22,8 @@
 #ifndef __AP_MOUNT_BACKEND_H__
 #define __AP_MOUNT_BACKEND_H__
 
-#include <AP_Common.h>
-#include <AP_Mount.h>
+#include <AP_Common/AP_Common.h>
+#include "AP_Mount.h"
 
 class AP_Mount_Backend
 {
@@ -44,6 +44,9 @@ public:
     // update mount position - should be called periodically
     virtual void update() = 0;
 
+    // used for gimbals that need to read INS data at full rate
+    virtual void update_fast() {}
+
     // has_pan_control - returns true if this mount can control it's pan (required for multicopters)
     virtual bool has_pan_control() const = 0;
 
@@ -56,6 +59,9 @@ public:
     // set_roi_target - sets target location that mount should attempt to point towards
     virtual void set_roi_target(const struct Location &target_loc);
 
+    // control - control the mount
+    virtual void control(int32_t pitch_or_lat, int32_t roll_or_lon, int32_t yaw_or_alt, MAV_MOUNT_MODE mount_mode);
+    
     // configure_msg - process MOUNT_CONFIGURE messages received from GCS
     virtual void configure_msg(mavlink_message_t* msg);
 
@@ -67,6 +73,9 @@ public:
 
     // handle a GIMBAL_REPORT message
     virtual void handle_gimbal_report(mavlink_channel_t chan, mavlink_message_t *msg) {}
+
+    // handle a PARAM_VALUE message
+    virtual void handle_param_value(mavlink_message_t *msg) {}
 
     // send a GIMBAL_REPORT message to the GCS
     virtual void send_gimbal_report(mavlink_channel_t chan) {}

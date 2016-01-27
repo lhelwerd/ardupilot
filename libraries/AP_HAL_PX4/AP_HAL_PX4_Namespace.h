@@ -14,6 +14,9 @@ namespace PX4 {
         class PX4GPIO;
         class PX4DigitalSource;
         class NSHShellStream;
+        class PX4I2CDriver;
+        class PX4_I2C;
+        class Semaphore;
 }
 
 #endif //__AP_HAL_PX4_NAMESPACE_H__

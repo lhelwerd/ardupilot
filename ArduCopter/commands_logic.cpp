@@ -168,7 +168,7 @@ bool Copter::verify_command_callback(const AP_Mission::Mission_Command& cmd)
 
         // send message to GCS
         if (cmd_complete) {
-            gcs_send_mission_item_reached(cmd.index);
+            gcs_send_mission_item_reached_message(cmd.index);
         }
 
         return cmd_complete;
@@ -189,40 +189,31 @@ bool Copter::verify_command(const AP_Mission::Mission_Command& cmd)
     //
     case MAV_CMD_NAV_TAKEOFF:
         return verify_takeoff();
-        break;
 
     case MAV_CMD_NAV_WAYPOINT:
         return verify_nav_wp(cmd);
-        break;
 
     case MAV_CMD_NAV_LAND:
         return verify_land();
-        break;
 
     case MAV_CMD_NAV_LOITER_UNLIM:
         return verify_loiter_unlimited();
-        break;
 
     case MAV_CMD_NAV_LOITER_TURNS:
         return verify_circle(cmd);
-        break;
 
     case MAV_CMD_NAV_LOITER_TIME:
         return verify_loiter_time();
-        break;
 
     case MAV_CMD_NAV_RETURN_TO_LAUNCH:
         return verify_RTL();
-        break;
 
     case MAV_CMD_NAV_SPLINE_WAYPOINT:
         return verify_spline_wp(cmd);
-        break;
 
 #if NAV_GUIDED == ENABLED
     case MAV_CMD_NAV_GUIDED_ENABLE:
         return verify_nav_guided_enable(cmd);
-        break;
 #endif
 
     ///
@@ -230,29 +221,23 @@ bool Copter::verify_command(const AP_Mission::Mission_Command& cmd)
     ///
     case MAV_CMD_CONDITION_DELAY:
         return verify_wait_delay();
-        break;
 
     case MAV_CMD_CONDITION_DISTANCE:
         return verify_within_distance();
-        break;
 
     case MAV_CMD_CONDITION_CHANGE_ALT:
         return verify_change_alt();
-        break;
 
     case MAV_CMD_CONDITION_YAW:
         return verify_yaw();
-        break;
 
     case MAV_CMD_DO_PARACHUTE:
         // assume parachute was released successfully
         return true;
-        break;
 
     default:
-        // return true if we do not recognise the command so that we move on to the next command
+        // return true if we do not recognize the command so that we move on to the next command
         return true;
-        break;
     }
 }
 
@@ -300,8 +285,8 @@ void Copter::do_takeoff(const AP_Mission::Mission_Command& cmd)
 {
     // Set wp navigation target to safe altitude above current position
     float takeoff_alt = cmd.content.location.alt;
-    takeoff_alt = max(takeoff_alt,current_loc.alt);
-    takeoff_alt = max(takeoff_alt,100.0f);
+    takeoff_alt = MAX(takeoff_alt,current_loc.alt);
+    takeoff_alt = MAX(takeoff_alt,100.0f);
     auto_takeoff_start(takeoff_alt);
 }
 
@@ -625,7 +610,7 @@ bool Copter::verify_nav_wp(const AP_Mission::Mission_Command& cmd)
 
     // check if timer has run out
     if (((millis() - loiter_time) / 1000) >= loiter_time_max) {
-        gcs_send_text_fmt(PSTR("Reached Command #%i"),cmd.index);
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Reached command #%i",cmd.index);
         return true;
     }else{
         return false;
@@ -707,7 +692,7 @@ bool Copter::verify_spline_wp(const AP_Mission::Mission_Command& cmd)
 
     // check if timer has run out
     if (((millis() - loiter_time) / 1000) >= loiter_time_max) {
-        gcs_send_text_fmt(PSTR("Reached Command #%i"),cmd.index);
+        gcs_send_text_fmt(MAV_SEVERITY_INFO, "Reached command #%i",cmd.index);
         return true;
     }else{
         return false;
@@ -765,7 +750,7 @@ void Copter::do_yaw(const AP_Mission::Mission_Command& cmd)
 
 bool Copter::verify_wait_delay()
 {
-    if (millis() - condition_start > (uint32_t)max(condition_value,0)) {
+    if (millis() - condition_start > (uint32_t)MAX(condition_value,0)) {
         condition_value = 0;
         return true;
     }
@@ -782,7 +767,7 @@ bool Copter::verify_within_distance()
 {
     // update distance calculation
     calc_wp_distance();
-    if (wp_distance < max(condition_value,0)) {
+    if (wp_distance < (uint32_t)MAX(condition_value,0)) {
         condition_value = 0;
         return true;
     }
@@ -874,7 +859,13 @@ void Copter::do_roi(const AP_Mission::Mission_Command& cmd)
 void Copter::do_digicam_configure(const AP_Mission::Mission_Command& cmd)
 {
 #if CAMERA == ENABLED
-    camera.configure_cmd(cmd);
+    camera.configure(cmd.content.digicam_configure.shooting_mode,
+                     cmd.content.digicam_configure.shutter_speed,
+                     cmd.content.digicam_configure.aperture,
+                     cmd.content.digicam_configure.ISO,
+                     cmd.content.digicam_configure.exposure_type,
+                     cmd.content.digicam_configure.cmd_id,
+                     cmd.content.digicam_configure.engine_cutoff_time);
 #endif
 }
 
@@ -882,7 +873,12 @@ void Copter::do_digicam_configure(const AP_Mission::Mission_Command& cmd)
 void Copter::do_digicam_control(const AP_Mission::Mission_Command& cmd)
 {
 #if CAMERA == ENABLED
-    camera.control_cmd(cmd);
+    camera.control(cmd.content.digicam_control.session,
+                   cmd.content.digicam_control.zoom_pos,
+                   cmd.content.digicam_control.zoom_step,
+                   cmd.content.digicam_control.focus_lock,
+                   cmd.content.digicam_control.shooting_cmd,
+                   cmd.content.digicam_control.cmd_id);
     log_picture();
 #endif
 }

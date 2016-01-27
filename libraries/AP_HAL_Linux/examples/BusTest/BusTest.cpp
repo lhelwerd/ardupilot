@@ -4,16 +4,10 @@
 // scan I2C and SPI buses for expected devices
 //
 
-#include <AP_Common.h>
-#include <AP_Progmem.h>
-#include <AP_HAL.h>
-#include <AP_HAL_Linux.h>
-#include <AP_HAL_Empty.h>
-#include <AP_Math.h>
-#include <AP_Param.h>
-#include <StorageManager.h>
+#include <AP_Common/AP_Common.h>
+#include <AP_HAL/AP_HAL.h>
 
-const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
+const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
 void setup(void)
 {

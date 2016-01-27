@@ -6,7 +6,7 @@
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 
-#include <AP_HAL.h>
+#include <AP_HAL/AP_HAL.h>
 #include "DataFlash_Block.h"
 
 class DataFlash_SITL : public DataFlash_Block
@@ -40,9 +40,9 @@ private:
     AP_HAL::SPIDeviceDriver *_spi;
     AP_HAL::Semaphore *_spi_sem;
 public:
-    DataFlash_SITL(DataFlash_Class &front) :
-        DataFlash_Block(front) { }
-    void        Init(const struct LogStructure *structure, uint8_t num_types);
+    DataFlash_SITL(DataFlash_Class &front, DFMessageWriter_DFLogStart *writer) :
+        DataFlash_Block(front, writer) { }
+    void        Init() override;
     void        ReadManufacturerID();
     bool        CardInserted();
 };

@@ -6,14 +6,14 @@
 #ifndef AP_CAMERA_H
 #define AP_CAMERA_H
 
-#include <AP_Param.h>
-#include <AP_Common.h>
-#include <GCS_MAVLink.h>
-#include <GCS.h>
-#include <AP_Relay.h>
-#include <AP_GPS.h>
-#include <AP_AHRS.h>
-#include <AP_Mission.h>
+#include <AP_Param/AP_Param.h>
+#include <AP_Common/AP_Common.h>
+#include <GCS_MAVLink/GCS_MAVLink.h>
+#include <GCS_MAVLink/GCS.h>
+#include <AP_Relay/AP_Relay.h>
+#include <AP_GPS/AP_GPS.h>
+#include <AP_AHRS/AP_AHRS.h>
+#include <AP_Mission/AP_Mission.h>
 
 #define AP_CAMERA_TRIGGER_TYPE_SERVO                0
 #define AP_CAMERA_TRIGGER_TYPE_RELAY                1
@@ -52,30 +52,34 @@ public:
     void            control_msg(mavlink_message_t* msg);
     void            send_feedback(mavlink_channel_t chan, AP_GPS &gps, const AP_AHRS &ahrs, const Location &current_loc);
 
-    // Mission command processing
-    void            configure_cmd(const AP_Mission::Mission_Command& cmd);
-    void            control_cmd(const AP_Mission::Mission_Command& cmd);
+    // Command processing
+    void            configure(float shooting_mode, float shutter_speed, float aperture, float ISO, float exposure_type, float cmd_id, float engine_cutoff_time);
+    void            control(float session, float zoom_pos, float zoom_step, float focus_lock, float shooting_cmd, float cmd_id);
 
     // set camera trigger distance in a mission
     void            set_trigger_distance(uint32_t distance_m) { _trigg_dist.set(distance_m); }
 
     // Update location of vehicle and return true if a picture should be taken
-    bool update_location(const struct Location &loc);
+    bool update_location(const struct Location &loc, const AP_AHRS &ahrs);
 
     static const struct AP_Param::GroupInfo        var_info[];
 
 private:
     AP_Int8         _trigger_type;      // 0:Servo,1:Relay
     AP_Int8         _trigger_duration;  // duration in 10ths of a second that the camera shutter is held open
+    AP_Int8         _relay_on;          // relay value to trigger camera
     AP_Int16        _servo_on_pwm;      // PWM value to move servo to when shutter is activated
     AP_Int16        _servo_off_pwm;     // PWM value to move servo to when shutter is deactivated
     uint8_t         _trigger_counter;   // count of number of cycles shutter has been held open
-    AP_Relay       *_apm_relay;         // pointer to relay object from the base class Relay. The subclasses could be AP_Relay_APM1 or AP_Relay_APM2
+    AP_Relay       *_apm_relay;         // pointer to relay object from the base class Relay.
 
     void            servo_pic();        // Servo operated camera
     void            relay_pic();        // basic relay activation
 
     AP_Float        _trigg_dist;        // distance between trigger points (meters)
+    AP_Int16        _min_interval;      // Minimum time between shots required by camera
+    AP_Int16        _max_roll;          // Maximum acceptable roll angle when trigging camera
+    uint32_t        _last_photo_time;   // last time a photo was taken
     struct Location _last_location;
     uint16_t        _image_index;       // number of pictures taken since boot
 

@@ -21,11 +21,8 @@
  */
 
 #include "AP_Motors_Class.h"
-#include <AP_HAL.h>
+#include <AP_HAL/AP_HAL.h>
 extern const AP_HAL::HAL& hal;
-
-// initialise motor map
-    const uint8_t AP_Motors::_motor_to_channel_map[AP_MOTORS_MAX_NUM_MOTORS] PROGMEM = {MOTOR_TO_CHANNEL_MAP};
 
 // Constructor
 AP_Motors::AP_Motors(uint16_t loop_rate, uint16_t speed_hz) :
@@ -34,6 +31,7 @@ AP_Motors::AP_Motors(uint16_t loop_rate, uint16_t speed_hz) :
     _throttle_control_input(0.0f),
     _yaw_control_input(0.0f),
     _throttle_pwm_scalar(1.0f),
+    _rpy_pwm_scalar(0.074f),
     _loop_rate(loop_rate),
     _speed_hz(speed_hz),
     _throttle_radio_min(1100),
@@ -66,3 +64,52 @@ void AP_Motors::armed(bool arm)
     _flags.armed = arm;
     AP_Notify::flags.armed = arm;
 };
+
+/*
+  write to an output channel
+ */
+void AP_Motors::rc_write(uint8_t chan, uint16_t pwm)
+{
+    if (_motor_map_mask & (1U<<chan)) {
+        // we have a mapped motor number for this channel
+        chan = _motor_map[chan];
+    }
+    hal.rcout->write(chan, pwm);
+}
+
+/*
+  set frequency of a set of channels
+ */
+void AP_Motors::rc_set_freq(uint32_t mask, uint16_t freq_hz)
+{
+    hal.rcout->set_freq(rc_map_mask(mask), freq_hz);
+}
+
+void AP_Motors::rc_enable_ch(uint8_t chan)
+{
+    if (_motor_map_mask & (1U<<chan)) {
+        // we have a mapped motor number for this channel
+        chan = _motor_map[chan];
+    }
+    hal.rcout->enable_ch(chan);
+}
+
+/*
+  map an internal motor mask to real motor mask
+ */
+uint32_t AP_Motors::rc_map_mask(uint32_t mask) const
+{
+    uint32_t mask2 = 0;
+    for (uint8_t i=0; i<32; i++) {
+        uint32_t bit = 1UL<<i;
+        if (mask & bit) {
+            if (_motor_map_mask & bit) {
+                // we have a mapped motor number for this channel
+                mask2 |= (1UL << _motor_map[i]);
+            } else {
+                mask2 |= bit;
+            }
+        }
+    }
+    return mask2;
+}

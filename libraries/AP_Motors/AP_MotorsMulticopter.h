@@ -8,6 +8,10 @@
 
 #include "AP_Motors_Class.h"
 
+#ifndef AP_MOTORS_DENSITY_COMP
+#define AP_MOTORS_DENSITY_COMP 1
+#endif
+
 #define AP_MOTORS_DEFAULT_MIN_THROTTLE  130
 #define AP_MOTORS_DEFAULT_MID_THROTTLE  500
 #define AP_MOTORS_DEFAULT_MAX_THROTTLE  1000
@@ -15,7 +19,7 @@
 #define AP_MOTORS_SPIN_WHEN_ARMED       70      // spin motors at this PWM value when armed
 #define AP_MOTORS_YAW_HEADROOM_DEFAULT  200
 #define AP_MOTORS_THR_LOW_CMP_DEFAULT   0.5f    // ratio controlling the max throttle output during competing requests of low throttle from the pilot (or autopilot) and higher throttle for attitude control.  Higher favours Attitude over pilot input
-#define AP_MOTORS_THST_EXPO_DEFAULT     0.5f    // set to 0 for linear and 1 for second order approximation
+#define AP_MOTORS_THST_EXPO_DEFAULT     0.65f   // set to 0 for linear and 1 for second order approximation
 #define AP_MOTORS_THST_MAX_DEFAULT      0.95f   // throttle which produces the maximum thrust.  (i.e. 0 ~ 1 ) of the full throttle range
 #define AP_MOTORS_THST_BAT_MAX_DEFAULT  0.0f
 #define AP_MOTORS_THST_BAT_MIN_DEFAULT  0.0f
@@ -23,10 +27,10 @@
 #define AP_MOTORS_BATT_VOLT_FILT_HZ     0.5f    // battery voltage filtered at 0.5hz
 #define AP_MOTORS_THR_MIX_MIN_DEFAULT   0.1f    // minimum throttle mix
 #define AP_MOTORS_THR_MIX_MID_DEFAULT   0.5f    // manual throttle mix
-#define AP_MOTORS_THR_MIX_MAX_DEFAULT   0.9f    // maximum throttle mix
+#define AP_MOTORS_THR_MIX_MAX_DEFAULT   0.5f    // maximum throttle mix default
 
 // To-Do: replace this hard coded counter with a timer
-#if HAL_CPU_CLASS < HAL_CPU_CLASS_75 || CONFIG_HAL_BOARD == HAL_BOARD_SITL || CONFIG_HAL_BOARD == HAL_BOARD_LINUX
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL || CONFIG_HAL_BOARD == HAL_BOARD_LINUX
  // slow start increments - throttle increase per (100hz) iteration.  i.e. 5 = full speed in 2 seconds
  #define AP_MOTOR_SLOW_START_INCREMENT           10      // max throttle ramp speed (i.e. motors can reach full throttle in 1 second)
  #define AP_MOTOR_SLOW_START_LOW_END_INCREMENT   2       // min throttle ramp speed (i.e. motors will speed up from zero to _spin_when_armed speed in about 1 second)
@@ -54,7 +58,7 @@ public:
     //  has no effect when throttle is above hover throttle
     void                set_throttle_mix_min() { _throttle_thr_mix_desired = _thr_mix_min; }
     void                set_throttle_mix_mid() { _throttle_thr_mix_desired = AP_MOTORS_THR_MIX_MID_DEFAULT; }
-    void                set_throttle_mix_max() { _throttle_thr_mix_desired = AP_MOTORS_THR_MIX_MAX_DEFAULT; }
+    void                set_throttle_mix_max() { _throttle_thr_mix_desired = _thr_mix_max; }
 
     // get_throttle_thr_mix - get low throttle compensation value
     bool                is_throttle_mix_min() const { return (_throttle_thr_mix < 1.25f*_thr_mix_min); }
@@ -62,6 +66,7 @@ public:
     // returns warning throttle
     float               get_throttle_warn() const { return rel_pwm_to_thr_range(_spin_when_armed); }
 
+    int16_t             throttle_max() const { return _max_throttle; }
     int16_t             throttle_min() const { return rel_pwm_to_thr_range(_min_throttle); }
 
     // set_throttle_range - sets the minimum throttle that will be sent to the engines when they're not off (i.e. to prevents issues with some motors spinning and some not at very low throttle)
@@ -131,9 +136,9 @@ protected:
     // RPY channels typically +/-45 degrees servo travel between +/-400 PWM
     // Throttle channel typically 0-1000 range converts to 1100-1900 PWM for final output signal to motors
     // ToDo: this should all be handled as floats +/- 1.0 instead of PWM and fake angle ranges
-    int16_t             calc_roll_pwm() { return (_roll_control_input / 11.25f);}
-    int16_t             calc_pitch_pwm() { return (_pitch_control_input / 11.25f);}
-    int16_t             calc_yaw_pwm() { return (_yaw_control_input / 11.25f);}
+    float               calc_roll_pwm() { return (_roll_control_input * _rpy_pwm_scalar); }
+    float               calc_pitch_pwm() { return (_pitch_control_input * _rpy_pwm_scalar); }
+    float               calc_yaw_pwm() { return (_yaw_control_input * _rpy_pwm_scalar); }
     int16_t             calc_throttle_radio_output() { return (_throttle_control_input * _throttle_pwm_scalar) + _throttle_radio_min;}
 
     // flag bitmask
@@ -151,7 +156,8 @@ protected:
     AP_Float            _batt_voltage_max;      // maximum voltage used to scale lift
     AP_Float            _batt_voltage_min;      // minimum voltage used to scale lift
     AP_Float            _batt_current_max;      // current over which maximum throttle is limited
-    AP_Float            _thr_mix_min;           // current over which maximum throttle is limited
+    AP_Float            _thr_mix_min;           // throttle vs attitude control prioritisation used when landing (higher values mean we prioritise attitude control over throttle)
+    AP_Float            _thr_mix_max;           // throttle vs attitude control prioritisation used during active flight (higher values mean we prioritise attitude control over throttle)
 
     // internal variables
     bool                motor_enabled[AP_MOTORS_MAX_NUM_MOTORS];    // true if motor is enabled

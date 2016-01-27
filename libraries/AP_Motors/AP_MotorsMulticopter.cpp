@@ -21,11 +21,11 @@
  */
 
 #include "AP_MotorsMulticopter.h"
-#include <AP_HAL.h>
+#include <AP_HAL/AP_HAL.h>
 extern const AP_HAL::HAL& hal;
 
 // parameters for the motor class
-const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] PROGMEM = {
+const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
     // 0 was used by TB_RATIO
     // 1,2,3 were used by throttle curve
 
@@ -86,10 +86,17 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] PROGMEM = {
 
     // @Param: THR_MIX_MIN
     // @DisplayName: Throttle Mix Minimum
-    // @Description: Minimum ratio that the average throttle can increase above the desired throttle after roll, pitch and yaw are mixed
+    // @Description: Throttle vs attitude control prioritisation used when landing (higher values mean we prioritise attitude control over throttle)
     // @Range: 0.1 0.25
     // @User: Advanced
     AP_GROUPINFO("THR_MIX_MIN", 13, AP_MotorsMulticopter, _thr_mix_min, AP_MOTORS_THR_MIX_MIN_DEFAULT),
+
+    // @Param: THR_MIX_MAX
+    // @DisplayName: Throttle Mix Maximum
+    // @Description: Throttle vs attitude control prioritisation used during active flight (higher values mean we prioritise attitude control over throttle)
+    // @Range: 0.5 0.9
+    // @User: Advanced
+    AP_GROUPINFO("THR_MIX_MAX", 14, AP_MotorsMulticopter, _thr_mix_max, AP_MOTORS_THR_MIX_MAX_DEFAULT),
 
     AP_GROUPEND
 };
@@ -261,7 +268,7 @@ void AP_MotorsMulticopter::update_lift_max_from_batt_voltage()
         return;
     }
 
-    _batt_voltage_min = max(_batt_voltage_min, _batt_voltage_max * 0.6f);
+    _batt_voltage_min = MAX(_batt_voltage_min, _batt_voltage_max * 0.6f);
 
     // add current based voltage sag to battery voltage
     float batt_voltage = _batt_voltage + _batt_current * _batt_resistance;
@@ -303,10 +310,10 @@ void AP_MotorsMulticopter::update_throttle_thr_mix()
     // slew _throttle_thr_mix to _throttle_thr_mix_desired
     if (_throttle_thr_mix < _throttle_thr_mix_desired) {
         // increase quickly (i.e. from 0.1 to 0.9 in 0.4 seconds)
-        _throttle_thr_mix += min(2.0f/_loop_rate, _throttle_thr_mix_desired-_throttle_thr_mix);
+        _throttle_thr_mix += MIN(2.0f/_loop_rate, _throttle_thr_mix_desired-_throttle_thr_mix);
     } else if (_throttle_thr_mix > _throttle_thr_mix_desired) {
         // reduce more slowly (from 0.9 to 0.1 in 1.6 seconds)
-        _throttle_thr_mix -= min(0.5f/_loop_rate, _throttle_thr_mix-_throttle_thr_mix_desired);
+        _throttle_thr_mix -= MIN(0.5f/_loop_rate, _throttle_thr_mix-_throttle_thr_mix_desired);
     }
     _throttle_thr_mix = constrain_float(_throttle_thr_mix, 0.1f, 1.0f);
 }
@@ -326,10 +333,12 @@ float AP_MotorsMulticopter::get_compensation_gain() const
 
     float ret = 1.0f / _lift_max;
 
+#if AP_MOTORS_DENSITY_COMP == 1
     // air density ratio is increasing in density / decreasing in altitude
     if (_air_density_ratio > 0.3f && _air_density_ratio < 1.5f) {
         ret *= 1.0f / constrain_float(_air_density_ratio,0.5f,1.25f);
     }
+#endif
     return ret;
 }
 
@@ -350,6 +359,7 @@ void AP_MotorsMulticopter::set_throttle_range(uint16_t min_throttle, int16_t rad
     _throttle_radio_min = radio_min;
     _throttle_radio_max = radio_max;
     _throttle_pwm_scalar = (_throttle_radio_max - _throttle_radio_min) / 1000.0f;
+    _rpy_pwm_scalar = (_throttle_radio_max - (_throttle_radio_min + _min_throttle)) / 9000.0f;
     _min_throttle = (float)min_throttle * _throttle_pwm_scalar;   
 }
 
@@ -370,10 +380,12 @@ void AP_MotorsMulticopter::throttle_pass_through(int16_t pwm)
 {
     if (armed()) {
         // send the pilot's input directly to each enabled motor
-        for (int16_t i=0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
+        hal.rcout->cork();
+        for (uint16_t i=0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
-                hal.rcout->write(pgm_read_byte(&_motor_to_channel_map[i]), pwm);
+                rc_write(i, pwm);
             }
         }
+        hal.rcout->push();
     }
 }

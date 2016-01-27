@@ -3,41 +3,10 @@
 // Unit tests for the AP_Math euler code
 //
 
-#include <AP_HAL.h>
-#include <stdlib.h>
-#include <AP_Common.h>
-#include <AP_Progmem.h>
-#include <AP_Param.h>
-#include <AP_HAL_AVR.h>
-#include <AP_HAL_SITL.h>
-#include <AP_HAL_Empty.h>
-#include <AP_HAL_PX4.h>
-#include <AP_HAL_Linux.h>
-#include <AP_Math.h>
-#include <Filter.h>
-#include <AP_ADC.h>
-#include <SITL.h>
-#include <AP_Compass.h>
-#include <AP_Baro.h>
-#include <AP_Notify.h>
-#include <AP_InertialSensor.h>
-#include <AP_GPS.h>
-#include <DataFlash.h>
-#include <GCS_MAVLink.h>
-#include <AP_Mission.h>
-#include <StorageManager.h>
-#include <AP_Terrain.h>
-#include <AP_Declination.h>
-#include <AP_AHRS.h>
-#include <AP_NavEKF.h>
-#include <AP_Airspeed.h>
-#include <AP_Vehicle.h>
-#include <AP_ADC_AnalogSource.h>
-#include <AP_Rally.h>
-#include <AP_BattMonitor.h>
-#include <AP_RangeFinder.h>
+#include <AP_HAL/AP_HAL.h>
+#include <AP_Math/AP_Math.h>
 
-const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
+const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
 #define SHOW_POLES_BREAKDOWN 0
 
@@ -80,16 +49,16 @@ static void check_result(const char *msg,
             ToDeg(rad_diff(pitch, -PI/2)) < 1) {
             // we expect breakdown at these poles
 #if SHOW_POLES_BREAKDOWN
-            hal.console->printf_P(
-                PSTR("%s breakdown eulers roll=%f/%f pitch=%f/%f yaw=%f/%f\n"),
+            hal.console->printf(
+                "%s breakdown eulers roll=%f/%f pitch=%f/%f yaw=%f/%f\n",
                 msg,
                 ToDeg(roll), ToDeg(roll2),
                 ToDeg(pitch), ToDeg(pitch2),
                 ToDeg(yaw), ToDeg(yaw2));
 #endif
         } else {
-            hal.console->printf_P(
-                PSTR("%s incorrect eulers roll=%f/%f pitch=%f/%f yaw=%f/%f\n"),
+            hal.console->printf(
+                "%s incorrect eulers roll=%f/%f pitch=%f/%f yaw=%f/%f\n",
                 msg,
                 ToDeg(roll), ToDeg(roll2),
                 ToDeg(pitch), ToDeg(pitch2),

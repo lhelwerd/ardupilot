@@ -4,40 +4,33 @@
  */
 
 // Libraries
-#include <AP_Common.h>
-#include <AP_Progmem.h>
-#include <AP_Param.h>
-#include <AP_HAL.h>
-#include <AP_HAL_AVR.h>
-#include <AP_HAL_PX4.h>
-#include <AP_HAL_Linux.h>
-#include <AP_HAL_Empty.h>
-#include <AP_Math.h>        // ArduPilot Mega Vector/Matrix math Library
-#include <RC_Channel.h>     // RC Channel Library
-#include <AP_Motors.h>
-#include <AP_Curve.h>
-#include <AP_Notify.h>
-#include <AP_GPS.h>
-#include <DataFlash.h>
-#include <AP_InertialSensor.h>
-#include <AP_ADC.h>
-#include <GCS_MAVLink.h>
-#include <AP_Baro.h>
-#include <Filter.h>
-#include <AP_AHRS.h>
-#include <AP_Compass.h>
-#include <AP_Declination.h>
-#include <AP_Airspeed.h>
-#include <AP_Vehicle.h>
-#include <AP_ADC_AnalogSource.h>
-#include <AP_Mission.h>
-#include <StorageManager.h>
-#include <AP_Terrain.h>
-#include <AP_NavEKF.h>
-#include <AP_BattMonitor.h>
-#include <AP_RangeFinder.h>
+#include <AP_Common/AP_Common.h>
+#include <AP_Param/AP_Param.h>
+#include <AP_HAL/AP_HAL.h>
+#include <AP_Math/AP_Math.h>        // ArduPilot Mega Vector/Matrix math Library
+#include <RC_Channel/RC_Channel.h>     // RC Channel Library
+#include <AP_Motors/AP_Motors.h>
+#include <AP_Notify/AP_Notify.h>
+#include <AP_GPS/AP_GPS.h>
+#include <DataFlash/DataFlash.h>
+#include <AP_InertialSensor/AP_InertialSensor.h>
+#include <AP_ADC/AP_ADC.h>
+#include <GCS_MAVLink/GCS_MAVLink.h>
+#include <AP_Baro/AP_Baro.h>
+#include <Filter/Filter.h>
+#include <AP_AHRS/AP_AHRS.h>
+#include <AP_Compass/AP_Compass.h>
+#include <AP_Declination/AP_Declination.h>
+#include <AP_Airspeed/AP_Airspeed.h>
+#include <AP_Vehicle/AP_Vehicle.h>
+#include <AP_Mission/AP_Mission.h>
+#include <StorageManager/StorageManager.h>
+#include <AP_Terrain/AP_Terrain.h>
+#include <AP_NavEKF/AP_NavEKF.h>
+#include <AP_BattMonitor/AP_BattMonitor.h>
+#include <AP_RangeFinder/AP_RangeFinder.h>
 
-const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
+const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
 RC_Channel rc1(0), rc2(1), rc3(2), rc4(3);
 
@@ -99,13 +92,13 @@ void motor_order_test()
 
     motors.armed(true);
     for (int8_t i=1; i <= 4; i++) {
-		hal.console->printf_P(PSTR("Motor %d\n"),(int)i);
+		hal.console->printf("Motor %d\n",(int)i);
         int elapsed =0,stop;
-		int start = hal.scheduler->micros();                                                   //Time Test
+		int start = AP_HAL::micros();                                                   //Time Test
         motors.output_test(i, 1150);
-        stop = hal.scheduler->micros();
+        stop = AP_HAL::micros();
         elapsed = stop - start;
-        hal.console->printf_P(PSTR("  Elapsed Time: %dus\n"),elapsed);
+        hal.console->printf("  Elapsed Time: %dus\n",elapsed);
         hal.scheduler->delay(300);
         motors.output_test(i, 1000);
         hal.scheduler->delay(2000);

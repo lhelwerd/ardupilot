@@ -15,12 +15,12 @@
  *  -- Adapted from Victor Mayoral Vilches's legacy driver under folder LSM9DS0
  */
 
-#include <AP_HAL.h>
+#include <AP_HAL/AP_HAL.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 
  #include "AP_InertialSensor_LSM9DS0.h"
- #include "../AP_HAL_Linux/GPIO.h"
+ #include <AP_HAL_Linux/GPIO.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -376,12 +376,6 @@ AP_InertialSensor_LSM9DS0::AP_InertialSensor_LSM9DS0(AP_InertialSensor &imu,
     AP_InertialSensor_Backend(imu),
     _drdy_pin_a(NULL),
     _drdy_pin_g(NULL),
-    _last_accel_filter_hz(-1),
-    _last_gyro_filter_hz(-1),
-    _accel_filter(800, 15),
-    _gyro_filter(760, 15),
-    _gyro_sample_available(false),
-    _accel_sample_available(false),
     _drdy_pin_num_a(drdy_pin_num_a),
     _drdy_pin_num_g(drdy_pin_num_g)
 {
@@ -416,14 +410,14 @@ bool AP_InertialSensor_LSM9DS0::_init_sensor()
     if (_drdy_pin_num_a >= 0) {
         _drdy_pin_a = hal.gpio->channel(_drdy_pin_num_a);
         if (_drdy_pin_a == NULL) {
-            hal.scheduler->panic("LSM9DS0: null accel data-ready GPIO channel\n");
+            AP_HAL::panic("LSM9DS0: null accel data-ready GPIO channel\n");
         }
     }
 
     if (_drdy_pin_num_g >= 0) {
         _drdy_pin_g = hal.gpio->channel(_drdy_pin_num_g);
         if (_drdy_pin_g == NULL) {
-            hal.scheduler->panic("LSM9DS0: null gyro data-ready GPIO channel\n");
+            AP_HAL::panic("LSM9DS0: null gyro data-ready GPIO channel\n");
         }
     }
 
@@ -480,8 +474,8 @@ bool AP_InertialSensor_LSM9DS0::_init_sensor()
 
     hal.scheduler->resume_timer_procs();
 
-    _gyro_instance = _imu.register_gyro();
-    _accel_instance = _imu.register_accel();
+    _gyro_instance = _imu.register_gyro(760);
+    _accel_instance = _imu.register_accel(800);
 
     _set_accel_max_abs_offset(_accel_instance, 5.0f);
 
@@ -739,8 +733,10 @@ void AP_InertialSensor_LSM9DS0::_read_data_transaction_a()
     _accel_raw_data(&raw_data);
 
     Vector3f accel_data(raw_data.x, -raw_data.y, -raw_data.z);
-    _accel_filtered = _accel_filter.apply(accel_data);
-    _accel_sample_available = true;
+    accel_data *= _accel_scale;
+
+    _rotate_and_correct_accel(_accel_instance, accel_data);
+    _notify_new_accel_raw_sample(_accel_instance, accel_data);
 }
 
 /*
@@ -752,74 +748,41 @@ void AP_InertialSensor_LSM9DS0::_read_data_transaction_g()
     _gyro_raw_data(&raw_data);
 
     Vector3f gyro_data(raw_data.x, -raw_data.y, -raw_data.z);
-    _gyro_filtered = _gyro_filter.apply(gyro_data);
-    _gyro_sample_available = true;
+    gyro_data *= _gyro_scale;
+
+    _rotate_and_correct_gyro(_gyro_instance, gyro_data);
+    _notify_new_gyro_raw_sample(_gyro_instance, gyro_data);
 }
 
 bool AP_InertialSensor_LSM9DS0::update()
 {
-    Vector3f gyro = _gyro_filtered;
-    Vector3f accel = _accel_filtered;
-
-    _accel_sample_available = false;
-    _gyro_sample_available = false;
-
-    accel *= _accel_scale;
-    gyro *= _gyro_scale;
-
-    _publish_gyro(_gyro_instance, gyro);
-    _publish_accel(_accel_instance, accel);
-
-    if (_last_accel_filter_hz != _accel_filter_cutoff()) {
-        _set_accel_filter(_accel_filter_cutoff());
-        _last_accel_filter_hz = _accel_filter_cutoff();
-    }
-
-    if (_last_gyro_filter_hz != _gyro_filter_cutoff()) {
-        _set_gyro_filter(_gyro_filter_cutoff());
-        _last_gyro_filter_hz = _gyro_filter_cutoff();
-    }
+    update_gyro(_gyro_instance);
+    update_accel(_accel_instance);
 
     return true;
-}
-
-/*
- *  set the accel filter frequency
- */
-void AP_InertialSensor_LSM9DS0::_set_accel_filter(uint8_t filter_hz)
-{
-    _accel_filter.set_cutoff_frequency(800, filter_hz);
-}
-
-/*
- *  set the gyro filter frequency
- */
-void AP_InertialSensor_LSM9DS0::_set_gyro_filter(uint8_t filter_hz)
-{
-    _gyro_filter.set_cutoff_frequency(760, filter_hz);
 }
 
  #if LSM9DS0_DEBUG
 /* dump all config registers - used for debug */
 void AP_InertialSensor_LSM9DS0::_dump_registers(void)
 {
-    hal.console->println_P(PSTR("LSM9DS0 registers:"));
-    hal.console->println_P(PSTR("Gyroscope registers:"));
+    hal.console->println("LSM9DS0 registers:");
+    hal.console->println("Gyroscope registers:");
     const uint8_t first = OUT_TEMP_L_XM;
     const uint8_t last = ACT_DUR;
     for (uint8_t reg=first; reg<=last; reg++) {
         uint8_t v = _register_read_g(reg);
-        hal.console->printf_P(PSTR("%02x:%02x "), (unsigned)reg, (unsigned)v);
+        hal.console->printf("%02x:%02x ", (unsigned)reg, (unsigned)v);
         if ((reg - (first-1)) % 16 == 0) {
             hal.console->println();
         }
     }
     hal.console->println();
 
-    hal.console->println_P(PSTR("Accelerometer and Magnetometers registers:"));
+    hal.console->println("Accelerometer and Magnetometers registers:");
     for (uint8_t reg=first; reg<=last; reg++) {
         uint8_t v = _register_read_xm(reg);
-        hal.console->printf_P(PSTR("%02x:%02x "), (unsigned)reg, (unsigned)v);
+        hal.console->printf("%02x:%02x ", (unsigned)reg, (unsigned)v);
         if ((reg - (first-1)) % 16 == 0) {
             hal.console->println();
         }
