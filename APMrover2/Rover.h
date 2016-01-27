@@ -148,7 +148,8 @@ private:
 #if AP_AHRS_NAVEKF_AVAILABLE
     NavEKF EKF{&ahrs, barometer, sonar};
     NavEKF2 EKF2{&ahrs, barometer, sonar};
-    AP_AHRS_NavEKF ahrs {ins, barometer, gps, sonar, EKF, EKF2};
+    AP_AHRS_NavEKF ahrs {ins, barometer, gps, sonar, EKF, EKF2,
+                         AP_AHRS_NavEKF::FLAG_ALWAYS_USE_EKF};
 #else
     AP_AHRS_DCM ahrs {ins, barometer, gps};
 #endif
